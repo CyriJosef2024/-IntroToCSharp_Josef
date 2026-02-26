@@ -1,0 +1,177 @@
+using System;
+
+namespace GreenTransit_FleetManager
+{
+    // ==================== ABSTRACTION ====================
+    // Abstract base class Vehicle – cannot be instantiated.
+    // It defines the common structure and an abstract method that all vehicles must implement.
+    public abstract class Vehicle
+    {
+        // ENCAPSULATION: private fields
+        private string _vehicleID;
+        private string _modelName;
+
+        // Public properties to control access
+        public string VehicleID
+        {
+            get { return _vehicleID; }
+            set { _vehicleID = value; }
+        }
+
+        public string ModelName
+        {
+            get { return _modelName; }
+            set { _modelName = value; }
+        }
+
+        // Constructor to initialize common fields
+        public Vehicle(string vehicleID, string modelName)
+        {
+            _vehicleID = vehicleID;
+            _modelName = modelName;
+        }
+
+        // POLYMORPHISM: abstract method – subclasses MUST override this
+        public abstract double CalculateRange();
+    }
+
+    // ==================== INHERITANCE & POLYMORPHISM ====================
+    // ElectricBus subclass
+    public class ElectricBus : Vehicle
+    {
+        // ENCAPSULATION: private field with validation in property
+        private double _batteryLevel; // 0-100%
+
+        public double BatteryLevel
+        {
+            get { return _batteryLevel; }
+            set
+            {
+                // Throwing exception when validation fails
+                if (value < 0 || value > 100)
+                    throw new ArgumentOutOfRangeException(nameof(value),
+                        "Battery level must be between 0 and 100.");
+                _batteryLevel = value;
+            }
+        }
+
+        // Constructor uses base() to pass common data to Vehicle
+        public ElectricBus(string vehicleID, string modelName, double batteryLevel)
+            : base(vehicleID, modelName)
+        {
+            BatteryLevel = batteryLevel; // uses property with validation
+        }
+
+        // POLYMORPHISM: override CalculateRange() with bus-specific logic
+        public override double CalculateRange()
+        {
+            // Throwing exception when battery is critically low
+            if (_batteryLevel < 5)
+                throw new InvalidOperationException(
+                    "Cannot calculate range: Battery level is critically low (<5%).");
+
+            // Simple formula: 1.5 km per percent of battery
+            return _batteryLevel * 1.5;
+        }
+    }
+
+    // GasPoweredVan subclass
+    public class GasPoweredVan : Vehicle
+    {
+        private double _fuelLevel; // 0-100%
+
+        public double FuelLevel
+        {
+            get { return _fuelLevel; }
+            set
+            {
+                if (value < 0 || value > 100)
+                    throw new ArgumentOutOfRangeException(nameof(value),
+                        "Fuel level must be between 0 and 100.");
+                _fuelLevel = value;
+            }
+        }
+
+        public GasPoweredVan(string vehicleID, string modelName, double fuelLevel)
+            : base(vehicleID, modelName)
+        {
+            FuelLevel = fuelLevel;
+        }
+
+        public override double CalculateRange()
+        {
+            if (_fuelLevel < 5)
+                throw new InvalidOperationException(
+                    "Cannot calculate range: Fuel level is critically low (<5%).");
+
+            // Simple formula: 1.2 km per percent of fuel
+            return _fuelLevel * 1.2;
+        }
+    }
+
+    // ==================== MAIN PROGRAM WITH EXCEPTION HANDLING ====================
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // ROBUSTNESS: try-catch-finally block wrapping the entire execution
+            try
+            {
+                Console.WriteLine("=== Green-Transit Fleet Manager ===\n");
+
+                // Polymorphic collection: array of Vehicle
+                Vehicle[] fleet = new Vehicle[2];
+
+                // --- Input for ElectricBus ---
+                Console.WriteLine("Enter details for Electric Bus:");
+                Console.Write("Vehicle ID: ");
+                string busID = Console.ReadLine();
+                Console.Write("Model Name: ");
+                string busModel = Console.ReadLine();
+                Console.Write("Battery Level (0-100): ");
+                double busBattery = double.Parse(Console.ReadLine()); // may throw FormatException
+                fleet[0] = new ElectricBus(busID, busModel, busBattery); // may throw ArgumentOutOfRangeException
+
+                // --- Input for GasPoweredVan ---
+                Console.WriteLine("\nEnter details for Gas-Powered Van:");
+                Console.Write("Vehicle ID: ");
+                string vanID = Console.ReadLine();
+                Console.Write("Model Name: ");
+                string vanModel = Console.ReadLine();
+                Console.Write("Fuel Level (0-100): ");
+                double vanFuel = double.Parse(Console.ReadLine());
+                fleet[1] = new GasPoweredVan(vanID, vanModel, vanFuel);
+
+                // --- Demonstrate Polymorphism ---
+                Console.WriteLine("\n=== RANGE CALCULATIONS ===");
+                foreach (Vehicle v in fleet)
+                {
+                    // At runtime, the correct overridden method is called.
+                    double range = v.CalculateRange();
+                    Console.WriteLine($"Vehicle {v.VehicleID} ({v.ModelName}) range: {range:F2} km");
+                }
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine($"\n[INPUT ERROR] Please enter numeric values. Details: {ex.Message}");
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Console.WriteLine($"\n[VALIDATION ERROR] {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"\n[BUSINESS RULE ERROR] {ex.Message}");
+            }
+            catch (Exception ex) // General fallback
+            {
+                Console.WriteLine($"\n[UNEXPECTED ERROR] {ex.Message}");
+            }
+            finally
+            {
+                Console.WriteLine("\nSystem Shutdown. Press any key to exit.");
+                Console.ReadKey();
+            }
+        }
+    }
+}
